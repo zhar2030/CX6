@@ -8,7 +8,7 @@ module.exports = async (req, res) => {
   const { firstName, lastName, email, phone, service, details } = req.body || {};
 
   if (!firstName || !lastName || !email || !service) {
-    return res.status(400).json({ error: 'Please fill in all required fields' });
+    return res.status(400).json({ error: 'Please fill all required fields' });
   }
 
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -16,27 +16,10 @@ module.exports = async (req, res) => {
   const FROM_EMAIL = process.env.FROM_EMAIL || 'CX Strategy Lab <onboarding@resend.dev>';
 
   if (!RESEND_API_KEY) {
-    return res.status(500).json({ error: 'Resend API key not configured' });
+    return res.status(500).json({ error: 'Resend API key not set' });
   }
 
-  const serviceLabels = {
-    'استشارات-متسوق-خفي': 'استشارات متسوق خفي',
-    'تحليل-تجربة-العميل': 'تحليل تجربة العميل',
-    'تصميم-تجربة-العميل': 'تصميم تجربة العميل',
-    'خدمة-أخرى': 'خدمة أخرى',
-  };
-
-  const html = 
-    <div dir="rtl" style="font-family: Tahoma, Arial, sans-serif; line-height: 1.8;">
-      <h2>طلب خدمة جديد — CX Strategy Lab</h2>
-      <p><strong>الاسم:</strong> ${escapeHtml(firstName)} </p>
-      <p><strong>البريد الإلكتروني:</strong> ${escapeHtml(email)}</p>
-      <p><strong>رقم الهاتف:</strong> ${escapeHtml(phone || 'غير مُدخل')}</p>
-      <p><strong>نوع الخدمة:</strong> ${escapeHtml(serviceLabels[service] || service)}</p>
-      <p><strong>تفاصيل الطلب:</strong></p>
-      <p style="white-space: pre-wrap;">${escapeHtml(details || 'لا توجد تفاصيل إضافية')}</p>
-    </div>
-  ;
+  const html = <div dir="rtl" style="font-family: Arial, sans-serif;"><h2>Service Request - CX Strategy Lab</h2><p><strong>Name:</strong> {escapeHtml(firstName)} {escapeHtml(lastName)}</p><p><strong>Email:</strong> {escapeHtml(email)}</p><p><strong>Phone:</strong> {escapeHtml(phone || 'Not provided')}</p><p><strong>Service:</strong> {escapeHtml(service)}</p><p><strong>Details:</strong></p><p style="white-space: pre-wrap;">{escapeHtml(details || 'None')}</p></div>;
 
   try {
     const response = await fetch('https://api.resend.com/emails', {
@@ -49,8 +32,8 @@ module.exports = async (req, res) => {
         from: FROM_EMAIL,
         to: [TO_EMAIL],
         reply_to: email,
-        subject: طلب خدمة جديد من ${firstName} ,
-        html,
+        subject: 'Service Request from ' + firstName + ' ' + lastName,
+        html: html,
       }),
     });
 
@@ -58,13 +41,13 @@ module.exports = async (req, res) => {
 
     if (!response.ok) {
       console.error('Resend error:', data);
-      return res.status(502).json({ error: 'Failed to send request' });
+      return res.status(502).json({ error: 'Failed to send' });
     }
 
     return res.status(200).json({ success: true, id: data.id });
   } catch (err) {
-    console.error('Send error:', err);
-    return res.status(500).json({ error: 'Unexpected error occurred' });
+    console.error('Error:', err);
+    return res.status(500).json({ error: 'Unexpected error' });
   }
 };
 
