@@ -61,17 +61,25 @@ module.exports = async (req, res) => {
       }),
     });
 
-    const data = await response.json();
+    const responseText = await response.text();
+    let data;
+    
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error('Failed to parse response:', responseText);
+      return res.status(502).json({ error: 'Invalid response from email service: ' + responseText.substring(0, 100) });
+    }
 
     if (!response.ok) {
       console.error('Resend API error:', data);
-      return res.status(502).json({ error: 'Failed to send email' });
+      return res.status(502).json({ error: data.message || 'Failed to send email' });
     }
 
     return res.status(200).json({ success: true, id: data.id });
   } catch (err) {
-    console.error('Server error:', err);
-    return res.status(500).json({ error: 'Server error occurred' });
+    console.error('Server error:', err.message);
+    return res.status(500).json({ error: 'Server error: ' + err.message });
   }
 };
 
