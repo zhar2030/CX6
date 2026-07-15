@@ -1,5 +1,3 @@
-﻿// Vercel Serverless Function (CommonJS)
-
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -16,10 +14,36 @@ module.exports = async (req, res) => {
   const FROM_EMAIL = process.env.FROM_EMAIL || 'CX Strategy Lab <onboarding@resend.dev>';
 
   if (!RESEND_API_KEY) {
-    return res.status(500).json({ error: 'Resend API key not set' });
+    return res.status(500).json({ error: 'Resend API key not configured' });
   }
 
-  const html = <div dir="rtl" style="font-family: Arial, sans-serif;"><h2>Service Request - CX Strategy Lab</h2><p><strong>Name:</strong> {escapeHtml(firstName)} {escapeHtml(lastName)}</p><p><strong>Email:</strong> {escapeHtml(email)}</p><p><strong>Phone:</strong> {escapeHtml(phone || 'Not provided')}</p><p><strong>Service:</strong> {escapeHtml(service)}</p><p><strong>Details:</strong></p><p style="white-space: pre-wrap;">{escapeHtml(details || 'None')}</p></div>;
+  const html = `
+    <div dir="rtl" style="font-family: Arial, sans-serif; padding: 20px;">
+      <h2 style="color: #1a2b3c; border-bottom: 2px solid #e74c3c; padding-bottom: 10px;">طلب خدمة جديد</h2>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>الاسم:</strong></td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">${escapeHtml(firstName)} ${escapeHtml(lastName)}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>البريد الإلكتروني:</strong></td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;"><a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>رقم الهاتف:</strong></td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">${escapeHtml(phone || 'لم يتم إدخال رقم')}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>نوع الخدمة:</strong></td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">${escapeHtml(service)}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; vertical-align: top;"><strong>التفاصيل:</strong></td>
+          <td style="padding: 8px; white-space: pre-wrap;">${escapeHtml(details || 'لا توجد تفاصيل')}</td>
+        </tr>
+      </table>
+    </div>
+  `;
 
   try {
     const response = await fetch('https://api.resend.com/emails', {
@@ -32,7 +56,7 @@ module.exports = async (req, res) => {
         from: FROM_EMAIL,
         to: [TO_EMAIL],
         reply_to: email,
-        subject: 'Service Request from ' + firstName + ' ' + lastName,
+        subject: 'طلب خدمة جديد من ' + firstName + ' ' + lastName,
         html: html,
       }),
     });
@@ -40,18 +64,19 @@ module.exports = async (req, res) => {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('Resend error:', data);
-      return res.status(502).json({ error: 'Failed to send' });
+      console.error('Resend API error:', data);
+      return res.status(502).json({ error: 'Failed to send email' });
     }
 
     return res.status(200).json({ success: true, id: data.id });
   } catch (err) {
-    console.error('Error:', err);
-    return res.status(500).json({ error: 'Unexpected error' });
+    console.error('Server error:', err);
+    return res.status(500).json({ error: 'Server error occurred' });
   }
 };
 
 function escapeHtml(str) {
+  if (!str) return '';
   return String(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
